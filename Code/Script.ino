@@ -1,7 +1,8 @@
-const int voltageReadPin = A0;
+const int voltageReadPin = A5;
 
 int ind = 0;
-float volArr[10];
+#define ARRLEN 10
+float volArr[ARRLEN];
 float sum = 0;
 
 float voltage = 0;
@@ -14,6 +15,7 @@ void setup()
 {
   Serial.begin(9600);
   SetupVoltage();
+
 }
 
 void loop()
@@ -27,20 +29,20 @@ void loop()
 void SetupVoltage()
 {
   sum = 0;
-  for(int i = 0;i < 10; i++)
+  for(int i = 0;i < ARRLEN; i++)
   {
-    volArr[i] = analogRead(voltageReadPin) * (5.0/1023.0);
+    volArr[i] = analogRead(voltageReadPin) * (4.94/1023.0);
     sum += volArr[i];
     delay(10);
   }
-  voltage = sum/10.0;
+  voltage = sum/ARRLEN;
 }
 void MeasureVoltage() // taking moving average to smooth out the voltage
 {
     sum -= volArr[ind];
-    volArr[ind] = analogRead(voltageReadPin) * (5.0/1023.0);
+    volArr[ind] = analogRead(voltageReadPin) * (4.94/1023.0);
     sum += volArr[ind];
-    ind = (ind + 1)%10;
+    ind = (ind + 1)%ARRLEN;
 
-    voltage = sum/10.0;;
+    voltage = sum/ARRLEN;
 }
