@@ -18,6 +18,8 @@ float x1 = 153.0, x2 = 237.0;
 float y1 = 150.0, y2 = 243.0;
 float k,c;
 
+int mode = 1;
+
 bool err = false;
 
 bool r1 = false;
@@ -41,11 +43,11 @@ void Boost(int i); // 0-disc 1-noboost 2-low 3-med 4-high
 
 void setup() 
 {
-  pinMode(A1,INPUT);
-  pinMode(A2,INPUT);
-  pinMode(A3,INPUT);
-  pinMode(A4,INPUT);
-  pinMode(A5,INPUT);
+  pinMode(A1,INPUT_PULLUP);
+  pinMode(A2,INPUT_PULLUP);
+  pinMode(A3,INPUT_PULLUP);
+  pinMode(A4,INPUT_PULLUP);
+  pinMode(A5,INPUT_PULLUP);
   
   pinMode(2,OUTPUT);
   pinMode(3,OUTPUT);
@@ -77,6 +79,8 @@ void loop()
   Serial.print(mains);
   Serial.print(" ");
   Serial.println(boostMode);
+
+  SetState();
   delay(100);
 }
 void SetState()
@@ -94,28 +98,31 @@ void SetState()
   if(digitalRead(A5)) digitalWrite(12,HIGH);
   else digitalWrite(12,LOW);
 
-  if(digitalRead(A4))
+  if(digitalRead(A4) == LOW) //default state is high, when switch is on it should connect pin to gnd
   {
     
   }
   else
   {
-    if(mains > 206)
+    if(mode == 1)
     {
-      Boost(1);
+      if(mains < 202) mode = 2;
     }
-    else if(mains > 192)
+    else if (mode == 2)
     {
-      Boost(2);
+      if(mains > 206) mode = 1;
+      else if (mains < 189) mode = 3;
     }
-    else if(mains > 174)
+    else if (mode == 3)
     {
-      Boost(3);
+      if(mains > 194) mode = 2;
+      else if(mains <174) mode = 4;
     }
-    else
+    else if (mode == 4)
     {
-      Boost(4);
+      if(mains > 177) mode = 3;
     }
+    Boost(mode);
   }
 
   if(r3 && r4)
