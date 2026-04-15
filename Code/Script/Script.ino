@@ -5,7 +5,7 @@ int ind = 0;
 #define ARRLEN 10
 float volArr[ARRLEN];
 float sum = 0;
-float voltage = 0;
+float v_sense = 0;
 float mains = 0;
 
 const double v_change = 0.004312;
@@ -22,7 +22,6 @@ float k,c;
 
 void MeasureVoltage();
 void SetupVoltage();
-float MainsToSense(int ms);
 
 void setup() 
 {
@@ -39,14 +38,11 @@ void setup()
 void loop()
 {
   MeasureVoltage();
-  Serial.print(voltage,3);
+  Serial.print(v_sense,3);
   Serial.print(" ");
   Serial.println(mains);
   delay(100);
 }
-
-float MainsToSense(int ms) { return v_change * ms;} 
-
 
 void SetupVoltage()
 {
@@ -57,7 +53,8 @@ void SetupVoltage()
     sum += volArr[i];
     delay(10);
   }
-  voltage = (sum/ARRLEN) * calib_correction;
+  v_sense = (sum/ARRLEN) * calib_correction;
+  mains = v_sense / v_change;
   mains = mains * k + c;// 2 point calib
 }
 void MeasureVoltage() // taking moving average to smooth out the voltage
@@ -67,7 +64,7 @@ void MeasureVoltage() // taking moving average to smooth out the voltage
     sum += volArr[ind];
     ind = (ind + 1)%ARRLEN;
 
-    voltage = (sum/ARRLEN) * calib_correction;
-    mains = voltage / v_change;
+    v_sense = (sum/ARRLEN) * calib_correction;
+    mains = v_sense / v_change;
     mains = mains * k + c;// 2 point calib
 }
