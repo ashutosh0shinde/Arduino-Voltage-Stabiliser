@@ -19,6 +19,7 @@ float y1 = 150.0, y2 = 243.0;
 float k,c;
 
 int mode = 1;
+  int m = 1;
 
 bool err = false;
 
@@ -59,7 +60,8 @@ void setup()
   pinMode(9,OUTPUT);
   pinMode(10,OUTPUT);
 
-  pinMode(12,OUTPUT);
+  pinMode(13,OUTPUT);
+  
   
   Serial.begin(9600);
   analogReference(INTERNAL);
@@ -80,11 +82,21 @@ void loop()
   Serial.print(" ");
   Serial.println(boostMode);
 
+  if(digitalRead(A1) == 0)
+  {
+    digitalWrite(13,HIGH);
+  }
+  else
+  {
+    digitalWrite(13,LOW);
+  }
+  
   SetState();
   delay(100);
 }
 void SetState()
 {
+
   r1 = false;
   r2 = false;
   r3 = false;
@@ -98,41 +110,82 @@ void SetState()
   if(digitalRead(A5)) digitalWrite(12,HIGH);
   else digitalWrite(12,LOW);
 
-  if(digitalRead(A4) == LOW) //default state is high, when switch is on it should connect pin to gnd
+  if(digitalRead(A2) == 0) //default state is high, when switch is on it should connect pin to gnd
   {
+    int a5 = digitalRead(A5);
+    int a4 = digitalRead(A4);
+    int a3 = digitalRead(A3);
     
+    if((a3 && a4 && a5)) //no boost
+    {
+      m = 1;
+    }
+    else if((!a3 && !a4 && !a5)) // disc
+    {
+      m = 0;
+    }
+    else if(!a3 && a4 && a5) //low
+    {
+      m = 2;
+    }
+    else if(a3 && !a4 && a5) //med
+    {
+      m = 3;
+    }
+    else if(a3 && a4 && !a5) //high
+    {
+      m = 4;
+    }
+    else
+    {
+      m = 1;
+    }
   }
   else
   {
-    if(mode == 1)
+    if(mode == 0)
     {
-      if(mains < 202) mode = 2;
+      if(mains > 50) m = 4;
+    }
+    else if(mode == 1)
+    {
+      if(mains < 202) m = 2;
     }
     else if (mode == 2)
     {
-      if(mains > 206) mode = 1;
-      else if (mains < 189) mode = 3;
+      if(mains > 206) m = 1;
+      else if (mains < 189) m = 3;
     }
     else if (mode == 3)
     {
-      if(mains > 194) mode = 2;
-      else if(mains <174) mode = 4;
+      if(mains > 194) m = 2;
+      else if(mains <174) m = 4;
     }
     else if (mode == 4)
     {
-      if(mains > 177) mode = 3;
+      if(mains > 177) m = 3;
+      else if(mains < 42) m = 0;
     }
-    Boost(mode);
   }
 
-  if(r3 && r4)
+ 
+  if (m != mode)
   {
-    Boost(0);
-    l1 = false;
-    l2 = false;
+    mode = m;
+    Boost(mode);
+
+     if(r3 && r4)
+    {
+       m = 0;
+        l1 = false;
+        l2 = false;
+   }
+    
+    SetRelay();
+    SetLed();
   }
-  SetRelay();
-  SetLed();
+ 
+  
 }
 void Boost(int i)
 {
