@@ -1,6 +1,6 @@
 const int voltageReadPin = A0;
 
-//voltage measurement
+// voltage measurement
 int ind = 0;
 #define ARRLEN 10
 float volArr[ARRLEN];
@@ -10,18 +10,16 @@ float mains = 0;
 
 const double v_change = 0.004312;
 
-//Caklibration of voltage   voltage * (actual * sensed)
-float calib_correction = 0.60/0.62;
+// Calibration
+float calib_correction = 0.60 / 0.62;
 
-//Two point calibration 
+// Two point calibration
 float x1 = 153.0, x2 = 237.0;
 float y1 = 150.0, y2 = 243.0;
-float k,c;
+float k, c;
 
 int mode = 1;
-  int m = 1;
-
-bool err = false;
+int m = 1;
 
 bool r1 = false;
 bool r2 = false;
@@ -40,264 +38,223 @@ void SetupVoltage();
 void SetState();
 void SetRelay();
 void SetLed();
-void Boost(int i); // 0-disc 1-noboost 2-low 3-med 4-high
+void Boost(int i);
 
 void setup() 
 {
-  pinMode(A1,INPUT_PULLUP);
-  pinMode(A2,INPUT_PULLUP);
-  pinMode(A3,INPUT_PULLUP);
-  pinMode(A4,INPUT_PULLUP);
-  pinMode(A5,INPUT_PULLUP);
-  
-  pinMode(2,OUTPUT);
-  pinMode(3,OUTPUT);
-  pinMode(4,OUTPUT);
-  pinMode(5,OUTPUT);
+  pinMode(A1, INPUT_PULLUP);
+  pinMode(A2, INPUT_PULLUP);
+  pinMode(A3, INPUT_PULLUP);
+  pinMode(A4, INPUT_PULLUP);
+  pinMode(A5, INPUT_PULLUP);
 
-  pinMode(7,OUTPUT);
-  pinMode(8,OUTPUT);
-  pinMode(9,OUTPUT);
-  pinMode(10,OUTPUT);
+  pinMode(2, OUTPUT);
+  pinMode(3, OUTPUT);
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
 
-  pinMode(13,OUTPUT);
-  
-  
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+
+  pinMode(12, OUTPUT); // fixed
+  pinMode(13, OUTPUT);
+
   Serial.begin(9600);
   analogReference(INTERNAL);
 
-//Two point calibration
-  k = (x2-x1)/(y2-y1); //slope
-  c = x1 - (y1 * k); //offset
-  
+  // calibration
+  k = (x2 - x1) / (y2 - y1);
+  c = x1 - (y1 * k);
+
   SetupVoltage();
 }
 
 void loop()
 {
   MeasureVoltage();
-  Serial.print(v_sense,3);
+
+  Serial.print(v_sense, 3);
   Serial.print(" ");
   Serial.print(mains);
   Serial.print(" ");
-  Serial.println(boostMode);
+  Serial.print(boostMode);
+  Serial.print(" ");
+  Serial.print(digitalRead(A1));
+  Serial.print(" ");
+  Serial.print(digitalRead(A2));
+  Serial.print(" ");
+  Serial.print(digitalRead(A3));
+  Serial.print(" ");
+  Serial.print(digitalRead(A4));
+  Serial.print(" ");
+  Serial.println(digitalRead(A5));
 
-  if(digitalRead(A1) == 0)
-  {
-    digitalWrite(13,HIGH);
-  }
-  else
-  {
-    digitalWrite(13,LOW);
-  }
-  
+  digitalWrite(13, digitalRead(A1) == 0);
+
   SetState();
+
   delay(100);
 }
+
 void SetState()
 {
+  // reset states
+  r1 = r2 = r3 = r4 = false;
+  l1 = l2 = l3 = l4 = false;
 
-  r1 = false;
-  r2 = false;
-  r3 = false;
-  r4 = false;
-  
-  l1 = false;
-  l2 = false;
-  l3 = false;
-  l4 = false;
+  digitalWrite(12, digitalRead(A5));
 
-  if(digitalRead(A5)) digitalWrite(12,HIGH);
-  else digitalWrite(12,LOW);
+  m = mode; // default fallback
 
-  if(digitalRead(A2) == 0) //default state is high, when switch is on it should connect pin to gnd
+  // -------- MANUAL MODE --------
+  if (digitalRead(A2) == 0)
   {
     int a5 = digitalRead(A5);
     int a4 = digitalRead(A4);
     int a3 = digitalRead(A3);
-    
-    if((a3 && a4 && a5)) //no boost
-    {
-      m = 1;
-    }
-    else if((!a3 && !a4 && !a5)) // disc
-    {
-      m = 0;
-    }
-    else if(!a3 && a4 && a5) //low
-    {
-      m = 2;
-    }
-    else if(a3 && !a4 && a5) //med
-    {
-      m = 3;
-    }
-    else if(a3 && a4 && !a5) //high
-    {
-      m = 4;
-    }
-    else
-    {
-      m = 1;
-    }
+
+    if (a3 && a4 && a5) m = 1;
+    else if (!a3 && !a4 && !a5) m = 0;
+    else if (!a3 && a4 && a5) m = 2;
+    else if (a3 && !a4 && a5) m = 3;
+    else if (a3 && a4 && !a5) m = 4;
   }
+  // -------- AUTO MODE --------
   else
   {
-    if(mode == 0)
+    switch (mode)
     {
-      if(mains > 50) m = 4;
-    }
-    else if(mode == 1)
-    {
-      if(mains < 202) m = 2;
-    }
-    else if (mode == 2)
-    {
-      if(mains > 206) m = 1;
-      else if (mains < 189) m = 3;
-    }
-    else if (mode == 3)
-    {
-      if(mains > 194) m = 2;
-      else if(mains <174) m = 4;
-    }
-    else if (mode == 4)
-    {
-      if(mains > 177) m = 3;
-      else if(mains < 42) m = 0;
+      case 0:
+        if (mains > 50) m = 4;
+        break;
+
+      case 1:
+        if (mains < 202) m = 2;
+        break;
+
+      case 2:
+        if (mains > 206) m = 1;
+        else if (mains < 189) m = 3;
+        break;
+
+      case 3:
+        if (mains > 194) m = 2;
+        else if (mains < 174) m = 4;
+        break;
+
+      case 4:
+        if (mains > 177) m = 3;
+        else if (mains < 42) m = 0;
+        break;
     }
   }
 
- 
+  Boost(m);
+
   if (m != mode)
   {
     mode = m;
-    Boost(mode);
-
-     if(r3 && r4)
-    {
-       m = 0;
-        l1 = false;
-        l2 = false;
-   }
-    
     SetRelay();
-    SetLed();
   }
- 
-  
+
+  SetLed();
 }
+
 void Boost(int i)
 {
-  r1 = false;
-  r2 = false;
-  r3 = false;
-  r4 = false;
-  
-  l1 = false;
-  l2 = false;
-  l3 = false;
-  l4 = false;
-  
-  switch(i)
+  r1 = r2 = r3 = r4 = false;
+  l1 = l2 = l3 = l4 = false;
+
+  switch (i)
   {
-    case 0: //disconnected
-        r1 = true;
+    case 0: // disconnected
+      r1 = true;
+      l1 = l2 = l3 = l4 = true;
+      boostMode = "DISC";
+      break;
 
-        l1 = true;
-        l2 = true;
-        l3 = true;
-        l4 = true;
-        boostMode = "DISC";
-        break;
-        
-    case 1:  //no boost
-        l1 = true;
-        boostMode = "NOBOOST";
-       break;
-       
-    case 2: // low boost
-        r1 = true;
-        r4 = true;
-        
-        l2 = true;
-        boostMode = "LOW";
-        break;
-        
-    case 3: //medium boost
-        r1 = true;
-        r2 = true;
-        r3 = true;
+    case 1: // no boost
+      l1 = true;
+      boostMode = "NOBOOST";
+      break;
 
-        l3 = true;
-        boostMode = "MED";
-        break;
-        
-    case 4: //high boost
-        r1 = true;
-        r2 = true;
-        r4 = true;
+    case 2: // low
+      r1 = true;
+      r4 = true;
+      l2 = true;
+      boostMode = "LOW";
+      break;
 
-        l4 = true;
-        boostMode = "HIGH";
-        break;
-    default:
-        break;
+    case 3: // medium
+      r1 = true;
+      r2 = true;
+      r3 = true;
+      l3 = true;
+      boostMode = "MED";
+      break;
+
+    case 4: // high
+      r1 = true;
+      r2 = true;
+      r4 = true;
+      l4 = true;
+      boostMode = "HIGH";
+      break;
   }
 }
-void SetRelay()
-{ 
-  digitalWrite(7,LOW);
-  delay(10);
-  
-  if(r2) digitalWrite(8,HIGH);
-  else digitalWrite(8,LOW);
-  
-  if(r3) digitalWrite(9,HIGH);
-  else digitalWrite(9,LOW);
-  
-  if(r4) digitalWrite(10,HIGH);
-  else digitalWrite(10,LOW);
 
-  delay(10);
-  if(r1) digitalWrite(7,HIGH);
-  else digitalWrite(7,LOW);
+void SetRelay()
+{
+  // turn all OFF first
+  digitalWrite(7, LOW);
+  digitalWrite(8, LOW);
+  digitalWrite(9, LOW);
+  digitalWrite(10, LOW);
+
+  delay(50);
+
+  // then turn ON required
+  if (r1) digitalWrite(7, HIGH);
+  if (r2) digitalWrite(8, HIGH);
+  if (r3) digitalWrite(9, HIGH);
+  if (r4) digitalWrite(10, HIGH);
 }
+
 void SetLed()
 {
-  if(l1) digitalWrite(2,HIGH);
-  else digitalWrite(2,LOW);
-
-  if(l2) digitalWrite(3,HIGH);
-  else digitalWrite(3,LOW);
-
-  if(l3) digitalWrite(4,HIGH);
-  else digitalWrite(4,LOW);
-
-  if(l4) digitalWrite(5,HIGH);
-  else digitalWrite(5,LOW);
+  digitalWrite(2, l1);
+  digitalWrite(3, l2);
+  digitalWrite(4, l3);
+  digitalWrite(5, l4);
 }
+
 void SetupVoltage()
 {
   sum = 0;
-  for(int i = 0;i < ARRLEN; i++)
+  for (int i = 0; i < ARRLEN; i++)
   {
-    volArr[i] = analogRead(voltageReadPin) * (1.1/1023.0);
+    float reading = analogRead(voltageReadPin);
+    volArr[i] = (reading * 1.1) / 1023.0;
     sum += volArr[i];
     delay(10);
   }
-  v_sense = (sum/ARRLEN) * calib_correction;
-  mains = v_sense / v_change;
-  mains = mains * k + c;// 2 point calib
-}
-void MeasureVoltage() // taking moving average to smooth out the voltage
-{
-    sum -= volArr[ind];
-    volArr[ind] = analogRead(voltageReadPin) * (1.1/1023.0);
-    sum += volArr[ind];
-    ind = (ind + 1)%ARRLEN;
 
-    v_sense = (sum/ARRLEN) * calib_correction;
-    mains = v_sense / v_change;
-    mains = mains * k + c;// 2 point calib
+  v_sense = (sum / ARRLEN) * calib_correction;
+  mains = (v_sense / v_change) * k + c;
+}
+
+void MeasureVoltage()
+{
+  sum -= volArr[ind];
+
+  float reading = analogRead(voltageReadPin);
+  volArr[ind] = (reading * 1.1) / 1023.0;
+
+  sum += volArr[ind];
+  ind = (ind + 1) % ARRLEN;
+
+  v_sense = (sum / ARRLEN) * calib_correction;
+  mains = (v_sense / v_change) * k + c;
 }
